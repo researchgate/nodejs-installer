@@ -2,6 +2,7 @@
 namespace Mouf\NodeJsInstaller;
 
 use Composer\Composer;
+use Composer\Config;
 use Composer\Package\CompletePackage;
 use Composer\Script\Event;
 use Composer\EventDispatcher\EventSubscriberInterface;
@@ -65,7 +66,7 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
      */
     public function onPostUpdateInstall(Event $event)
     {
-        $vendorDir = $event->getComposer()->getConfig()->get('vendor-dir');
+        $vendorDir = $event->getComposer()->getConfig()->get('vendor-dir', Config::RELATIVE_PATHS);
         $vendorDir = rtrim($vendorDir, '/\\');
 
         $settings = array(

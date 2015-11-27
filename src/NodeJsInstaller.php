@@ -29,14 +29,14 @@ class NodeJsInstaller
 
     /**
      * @param IOInterface $io
-     * @param string      $binDir
+     * @param string      $binDir absolute path to the composer bin directory
      * @param string      $vendorDir
      */
     public function __construct(IOInterface $io, $binDir, $vendorDir)
     {
         $this->io = $io;
         $this->rfs = new RemoteFilesystem($io);
-        $this->binDir = realpath($binDir);
+        $this->binDir = $binDir;
         $this->vendorDir = $vendorDir;
     }
 
