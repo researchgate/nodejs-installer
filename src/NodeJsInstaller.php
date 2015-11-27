@@ -12,12 +12,32 @@ class NodeJsInstaller
      */
     private $io;
 
+    /**
+     * @var RemoteFilesystem
+     */
     protected $rfs;
 
-    public function __construct(IOInterface $io)
+    /**
+     * @var string
+     */
+    private $binDir;
+
+    /**
+     * @var string
+     */
+    private $vendorDir;
+
+    /**
+     * @param IOInterface $io
+     * @param string      $binDir absolute path to the composer bin directory
+     * @param string      $vendorDir
+     */
+    public function __construct(IOInterface $io, $binDir, $vendorDir)
     {
         $this->io = $io;
         $this->rfs = new RemoteFilesystem($io);
+        $this->binDir = $binDir;
+        $this->vendorDir = $vendorDir;
     }
 
     /**
@@ -66,7 +86,10 @@ class NodeJsInstaller
 
     /**
      * Returns the full install path to a command
+     *
      * @param string $command
+     *
+     * @return string
      */
     public function getGlobalInstallPath($command)
     {
@@ -111,26 +134,48 @@ class NodeJsInstaller
      *
      * @return null|string
      */
-    public function getNodeJsLocalInstallVersion($binDir)
+    public function getNodeJsLocalInstallVersion()
     {
         $returnCode = 0;
         $output = "";
 
-        $cwd = getcwd();
-        chdir(__DIR__.'/../../../../');
-
         ob_start();
 
-        $version = exec($binDir.DIRECTORY_SEPARATOR.'node -v 2>&1', $output, $returnCode);
+        $version = exec($this->binDir.DIRECTORY_SEPARATOR.'node -v 2>&1', $output, $returnCode);
 
         ob_end_clean();
-
-        chdir($cwd);
 
         if ($returnCode !== 0) {
             return;
         } else {
             return ltrim($version, "v");
+        }
+    }
+
+    /**
+     * Checks if NodeJS is installed locally.
+     * If yes, will return the version number.
+     * If no, will return null.
+     *
+     * Note: trailing "v" will be removed from version string.
+     *
+     * @return null|string
+     */
+    public function getNPMLocalInstallVersion()
+    {
+        $returnCode = 0;
+        $output = "";
+
+        ob_start();
+
+        $version = exec($this->binDir.DIRECTORY_SEPARATOR.'npm -v 2>&1', $output, $returnCode);
+
+        ob_end_clean();
+
+        if ($returnCode !== 0) {
+            return;
+        } else {
+            return $version;
         }
     }
 
@@ -151,9 +196,9 @@ class NodeJsInstaller
             }
         } elseif (Environment::isWindows() && Environment::getArchitecture() == 64) {
             if (version_compare($version, '4.0.0') >= 0) {
-                return "https://nodejs.org/dist/v" . $version . "/win-x64/node.exe";
+                return "https://nodejs.org/dist/v".$version."/win-x64/node.exe";
             } else {
-                return "https://nodejs.org/dist/v" . $version . "/x64/node.exe";
+                return "https://nodejs.org/dist/v".$version."/x64/node.exe";
             }
         } elseif (Environment::isMacOS() && Environment::getArchitecture() == 32) {
             return "https://nodejs.org/dist/v".$version."/node-v".$version."-darwin-x86.tar.gz";
@@ -188,8 +233,10 @@ class NodeJsInstaller
 
     /**
      * Installs NodeJS
-     * @param  string                   $version
-     * @param  string                   $targetDirectory
+     *
+     * @param  string $version
+     * @param  string $targetDirectory
+     *
      * @throws NodeJsInstallerException
      */
     public function install($version, $targetDirectory)
@@ -198,10 +245,7 @@ class NodeJsInstaller
         $url = $this->getNodeJSUrl($version);
         $this->io->write("  Downloading from $url");
 
-        $cwd = getcwd();
-        chdir(__DIR__.'/../../../../');
-
-        $fileName = 'vendor/'.pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_BASENAME);
+        $fileName = $this->vendorDir.DIRECTORY_SEPARATOR.pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_BASENAME);
 
         $this->rfs->copy(parse_url($url, PHP_URL_HOST), $url, $fileName);
 
@@ -225,43 +269,47 @@ class NodeJsInstaller
             // Let's delete the downloaded file.
             unlink($fileName);
         } else {
-            // If we are in Windows, let's move and install NPM.
+            // If we are in Windows, let's move.
             rename($fileName, $targetDirectory.'/'.basename($fileName));
+        }
+    }
 
+    /**
+     * @param string $versionConstraint
+     * @param string $targetDirectory
+     *
+     * @throws NodeJsInstallerException
+     */
+    public function installNpm($versionConstraint, $targetDirectory)
+    {
+        $localNPMVersion = $this->getNPMLocalInstallVersion();
+        $isInitialWindowsInstall = Environment::isWindows() && !$localNPMVersion;
+
+        if ($isInitialWindowsInstall) {
             // We have to download the latest available version in a bin for Windows, then upgrade it:
-            $url = "https://nodejs.org/dist/npm/npm-1.4.12.zip";
-            $npmFileName = "vendor/npm-1.4.12.zip";
+            $url = 'https://nodejs.org/dist/npm/npm-1.4.12.zip';
+            $npmFileName = $this->vendorDir.'/npm-1.4.12.zip';
             $this->rfs->copy(parse_url($url, PHP_URL_HOST), $url, $npmFileName);
 
             $this->unzip($npmFileName, $targetDirectory);
 
             unlink($npmFileName);
-
-            // Let's update NPM
-            // 1- Update PATH to run npm.
-            $path = getenv('PATH');
-            $newPath = realpath($targetDirectory).";".$path;
-            putenv('PATH='.$newPath);
-
-            // 2- Run npm
-            $cwd2 = getcwd();
-            chdir($targetDirectory);
-
-            $returnCode = 0;
-            passthru("npm update npm", $returnCode);
-            if ($returnCode !== 0) {
-                throw new NodeJsInstallerException("An error occurred while updating NPM to latest version.");
-            }
-
-            // Finally, let's copy the base npm file for Cygwin
-            if (file_exists('node_modules/npm/bin/npm')) {
-                copy('node_modules/npm/bin/npm', 'npm');
-            }
-
-            chdir($cwd2);
         }
 
-        chdir($cwd);
+        if ($versionConstraint || $isInitialWindowsInstall) {
+            $versionString = '';
+            if ($versionConstraint) {
+                $this->io->write("Installing <info>NPM ".$versionConstraint."</info>");
+                $versionString = '@"'.$versionConstraint.'"';
+            }
+
+            $output = null;
+            $returnCode = 0;
+            exec('npm -g install npm'.$versionString, $output, $returnCode);
+            if ($returnCode !== 0) {
+                throw new NodeJsInstallerException('An error occurred while updating NPM to latest version.');
+            }
+        }
     }
 
     /**
@@ -269,6 +317,8 @@ class NodeJsInstaller
      *
      * @param string $tarGzFile
      * @param string $targetDir
+     *
+     * @throws NodeJsInstallerException
      */
     private function extractTo($tarGzFile, $targetDir)
     {
@@ -277,51 +327,44 @@ class NodeJsInstaller
 
         $output = $return_var = null;
 
-        exec("tar -xvf ".$tarGzFile." -C ".escapeshellarg($targetDir)." --strip 1", $output, $return_var);
+        exec("tar -xf ".$tarGzFile." -C ".escapeshellarg($targetDir)." --strip 1", $output, $return_var);
 
         if ($return_var !== 0) {
             throw new NodeJsInstallerException("An error occurred while untaring NodeJS ($tarGzFile) to $targetDir");
         }
     }
 
-    public function createBinScripts($binDir, $targetDir, $isLocal)
+    public function createBinScripts($targetDir, $isLocal)
     {
-        $cwd = getcwd();
-        chdir(__DIR__.'/../../../../');
-
-        if (!file_exists($binDir)) {
-            $result = mkdir($binDir, 0775, true);
+        if (!file_exists($this->binDir)) {
+            $result = mkdir($this->binDir, 0775, true);
             if ($result === false) {
-                throw new NodeJsInstallerException("Unable to create directory ".$binDir);
+                throw new NodeJsInstallerException("Unable to create directory ".$this->binDir);
             }
         }
 
-        $fullTargetDir = realpath($targetDir);
-        $binDir = realpath($binDir);
-
         if (!Environment::isWindows()) {
-            $this->createBinScript($binDir, $fullTargetDir, 'node', 'node', $isLocal);
-            $this->createBinScript($binDir, $fullTargetDir, 'npm', 'npm', $isLocal);
+            $this->createBinScript($targetDir, 'node', 'node', $isLocal);
+            $this->createBinScript($targetDir, 'npm', 'npm', $isLocal);
         } else {
-            $this->createBinScript($binDir, $fullTargetDir, 'node.bat', 'node', $isLocal);
-            $this->createBinScript($binDir, $fullTargetDir, 'npm.bat', 'npm', $isLocal);
+            $this->createBinScript($targetDir, 'node.bat', 'node', $isLocal);
+            $this->createBinScript($targetDir, 'npm.bat', 'npm', $isLocal);
         }
-
-        chdir($cwd);
     }
 
     /**
      * Copy script into $binDir, replacing PATH with $fullTargetDir
-     * @param string $binDir
-     * @param string $fullTargetDir
+     *
+     * @param string $targetDir
      * @param string $scriptName
+     * @param string $target
      * @param bool   $isLocal
      */
-    private function createBinScript($binDir, $fullTargetDir, $scriptName, $target, $isLocal)
+    private function createBinScript($targetDir, $scriptName, $target, $isLocal)
     {
         $content = file_get_contents(__DIR__.'/../bin/'.($isLocal ? "local/" : "global/").$scriptName);
         if ($isLocal) {
-            $path = $this->makePathRelative($fullTargetDir, $binDir);
+            $path = $this->makePathRelative($targetDir, $this->binDir);
         } else {
             if ($scriptName == "node") {
                 $path = $this->getNodeJsGlobalInstallPath();
@@ -329,16 +372,14 @@ class NodeJsInstaller
                 $path = $this->getGlobalInstallPath($target);
             }
 
-            if (strpos($path, $binDir) === 0) {
-                // we found the local installation that already exists.
-
+            if (strpos($path, $this->binDir) === 0) { // we found the local installation that already exists.
                 return;
             }
         }
 
 
-        file_put_contents($binDir.'/'.$scriptName, sprintf($content, $path));
-        chmod($binDir.'/'.$scriptName, 0755);
+        file_put_contents($this->binDir.'/'.$scriptName, sprintf($content, $path));
+        chmod($this->binDir.'/'.$scriptName, 0755);
     }
 
     /**
@@ -371,7 +412,7 @@ class NodeJsInstaller
         $traverser = str_repeat('../', $depth);
         $endPathRemainder = implode('/', array_slice($endPathArr, $index));
         // Construct $endPath from traversing to the common path, then to the remaining $endPath
-        $relativePath = $traverser.(strlen($endPathRemainder) > 0 ? $endPathRemainder.'/' : '');
+        $relativePath = $traverser.(strlen($endPathRemainder) > 0 ? $endPathRemainder : '');
 
         return (strlen($relativePath) === 0) ? './' : $relativePath;
     }
@@ -386,22 +427,6 @@ class NodeJsInstaller
             $zip->close();
         } else {
             throw new NodeJsInstallerException("Unable to extract file $zipFileName");
-        }
-    }
-
-    /**
-     * Adds the vendor/bin directory into the path.
-     * Note: the vendor/bin is prepended in order to be applied BEFORE an existing install of node.
-     *
-     * @param string $binDir
-     */
-    public function registerPath($binDir)
-    {
-        $path = getenv('PATH');
-        if (Environment::isWindows()) {
-            putenv('PATH='.realpath($binDir).';'.$path);
-        } else {
-            putenv('PATH='.realpath($binDir).':'.$path);
         }
     }
 }

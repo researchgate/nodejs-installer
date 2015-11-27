@@ -14,7 +14,7 @@ Why?
 
 NodeJS is increasingly becoming a part of the tool-chain of modern web developers. Tools like Bower, Grunt, Gulp... are
 used everyday to build applications. For the PHP developer, this means PHP projects have build dependencies on NodeJS
-or Bower / NPM packages. The NodeJS-installer attempts to bridge the gap between NodeJS and PHP by making NodeJS easily 
+or Bower / NPM packages. The NodeJS-installer attempts to bridge the gap between NodeJS and PHP by making NodeJS easily
 installable as a Composer dependency.
 
 Building on this package, other packages like [koala-framework/composer-extra-assets](https://github.com/koala-framework/composer-extra-assets)
@@ -66,21 +66,21 @@ A number of options are available to customize NodeJS installation:
 Available options:
 
 - **version**: This is the version number of NodeJS that will be downloaded and installed.
-  You can specify version constraints in the usual Composer format (for instance "~0.12" or ">0.11").  
+  You can specify version constraints in the usual Composer format (for instance "~0.12" or ">0.11").
   _Default value: *_ The latest stable version of NodeJS is installed by default.
-- **targetDir**: The target directory NodeJS will be installed in. Relative to project root.  
-  This option is only available in the root package.  
-  *Default value: vendor/nodejs/nodejs*
+- **targetDir**: The target directory NodeJS will be installed in. Relative to project root.
+  This option is only available in the root package.
+  *Default value: <composer-vendor-dir>/nodejs/nodejs*
 - **forceLocal** (boolean): If set to true, NodeJS will always be downloaded and installed locally, even if NodeJS
-  is already available on your computer.  
-  This option is only available in the root package.  
+  is already available on your computer.
+  This option is only available in the root package.
   *Default value: false*
-- **includeBinInPath** (boolean): After the plugin is run in Composer, the *vendor/bin* directory can optionally be 
-  added to the PATH. This is useful if other plugins rely on "node" or "npm" being available globally on the 
-  computer. Using this option, these other plugins will automatically find the node/npm version that has been 
+- **includeBinInPath** (boolean): After the plugin is run in Composer, the *vendor/bin* directory can optionally be
+  added to the PATH. This is useful if other plugins rely on "node" or "npm" being available globally on the
+  computer. Using this option, these other plugins will automatically find the node/npm version that has been
   downloaded. Please note that the PATH is only set for the duration of the Composer script. Your global environment
-  is not impacted by this option.  
-  This option is only available in the root package.  
+  is not impacted by this option.
+  This option is only available in the root package.
   *Default value: false*
 
 
