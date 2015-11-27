@@ -19,6 +19,9 @@ use Composer\Util\Filesystem;
 class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
 {
 
+    /**
+     * @var Composer
+     */
     protected $composer;
 
     /**
@@ -26,6 +29,10 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
      */
     protected $io;
 
+    /**
+     * @param Composer    $composer
+     * @param IOInterface $io
+     */
     public function activate(Composer $composer, IOInterface $io)
     {
         $this->composer = $composer;
@@ -51,11 +58,18 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
 
     /**
      * Script callback; Acted on after install or update.
+     *
+     * @param Event $event
+     *
+     * @throws NodeJsInstallerException
      */
     public function onPostUpdateInstall(Event $event)
     {
+        $vendorDir = $event->getComposer()->getConfig()->get('vendor-dir');
+        $vendorDir = rtrim($vendorDir, '/\\');
+
         $settings = array(
-            'targetDir' => 'vendor/nodejs/nodejs',
+            'targetDir' => $vendorDir.'/nodejs/nodejs',
             'forceLocal' => false,
             'includeBinInPath' => false,
         );
@@ -69,6 +83,7 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
         }
 
         $binDir = $event->getComposer()->getConfig()->get('bin-dir');
+        $binDir = rtrim($binDir, '/\\');
 
         if (!class_exists(__NAMESPACE__.'\\NodeJsVersionMatcher')) {
             //The package is being uninstalled
@@ -84,13 +99,13 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
         $this->verboseLog("<info>NodeJS installer:</info>");
         $this->verboseLog(" - Requested version: ".$versionConstraint);
 
-        $nodeJsInstaller = new NodeJsInstaller($this->io);
+        $nodeJsInstaller = new NodeJsInstaller($this->io, $binDir, $vendorDir);
 
         $isLocal = false;
 
         if ($settings['forceLocal']) {
             $this->verboseLog(" - Forcing local NodeJS install.");
-            $this->installLocalVersion($binDir, $nodeJsInstaller, $versionConstraint, $settings['targetDir']);
+            $this->installLocalVersion($nodeJsInstaller, $versionConstraint, $settings['targetDir']);
             $isLocal = true;
         } else {
             $globalVersion = $nodeJsInstaller->getNodeJsGlobalInstallVersion();
@@ -101,32 +116,33 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
 
                 if (!$npmPath) {
                     $this->verboseLog(" - No NPM install found");
-                    $this->installLocalVersion($binDir, $nodeJsInstaller, $versionConstraint, $settings['targetDir']);
+                    $this->installLocalVersion($nodeJsInstaller, $versionConstraint, $settings['targetDir']);
                     $isLocal = true;
                 } elseif (!$nodeJsVersionMatcher->isVersionMatching($globalVersion, $versionConstraint)) {
-                    $this->installLocalVersion($binDir, $nodeJsInstaller, $versionConstraint, $settings['targetDir']);
+                    $this->installLocalVersion($nodeJsInstaller, $versionConstraint, $settings['targetDir']);
                     $isLocal = true;
                 } else {
                     $this->verboseLog(" - Global NodeJS install matches constraint ".$versionConstraint);
                 }
             } else {
                 $this->verboseLog(" - No global NodeJS install found");
-                $this->installLocalVersion($binDir, $nodeJsInstaller, $versionConstraint, $settings['targetDir']);
+                $this->installLocalVersion($nodeJsInstaller, $versionConstraint, $settings['targetDir']);
                 $isLocal = true;
             }
         }
 
         // Now, let's create the bin scripts that start node and NPM
-        $nodeJsInstaller->createBinScripts($binDir, $settings['targetDir'], $isLocal);
+        $nodeJsInstaller->createBinScripts($settings['targetDir'], $isLocal);
 
         // Finally, let's register vendor/bin in the PATH.
         if ($settings['includeBinInPath']) {
-            $nodeJsInstaller->registerPath($binDir);
+            $nodeJsInstaller->registerPath();
         }
     }
 
     /**
      * Writes message only in verbose mode.
+     *
      * @param string $message
      */
     private function verboseLog($message)
@@ -139,17 +155,16 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
     /**
      * Checks local NodeJS version, performs install if needed.
      *
-     * @param  string                   $binDir
      * @param  NodeJsInstaller          $nodeJsInstaller
      * @param  string                   $versionConstraint
      * @param  string                   $targetDir
      * @throws NodeJsInstallerException
      */
-    private function installLocalVersion($binDir, NodeJsInstaller $nodeJsInstaller, $versionConstraint, $targetDir)
+    private function installLocalVersion(NodeJsInstaller $nodeJsInstaller, $versionConstraint, $targetDir)
     {
         $nodeJsVersionMatcher = new NodeJsVersionMatcher();
 
-        $localVersion = $nodeJsInstaller->getNodeJsLocalInstallVersion($binDir);
+        $localVersion = $nodeJsInstaller->getNodeJsLocalInstallVersion();
         if ($localVersion !== null) {
             $this->verboseLog(" - Local NodeJS install found: v".$localVersion);
 
@@ -200,7 +215,6 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
         $versions = array();
 
         foreach ($packagesList as $package) {
-            /* @var $package PackageInterface */
             if ($package instanceof CompletePackage) {
                 $extra = $package->getExtra();
                 if (isset($extra['mouf']['nodejs']['version'])) {
