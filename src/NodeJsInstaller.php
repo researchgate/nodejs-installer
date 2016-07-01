@@ -306,6 +306,10 @@ class NodeJsInstaller
             $output = null;
             $returnCode = 0;
             exec('npm -g install npm'.$versionString, $output, $returnCode);
+            if (!$localNPMVersion || $localNPMVersion !== $this->getNPMLocalInstallVersion()) {
+                // clean cache if the npm version changed
+                exec('npm cache clean');
+            }
             if ($returnCode !== 0) {
                 throw new NodeJsInstallerException('An error occurred while updating NPM to latest version.');
             }
