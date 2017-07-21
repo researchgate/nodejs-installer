@@ -193,6 +193,10 @@ class NodeJsInstaller
         $returnCode = 0;
         $output = "";
 
+        if (!file_exists($this->binDir.DIRECTORY_SEPARATOR.'yarn')) {
+            return;
+        }
+
         ob_start();
 
         $version = exec($this->binDir.DIRECTORY_SEPARATOR.'yarn --version', $output, $returnCode);
