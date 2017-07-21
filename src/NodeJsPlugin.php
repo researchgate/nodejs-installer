@@ -242,12 +242,10 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
         $versions = array();
 
         foreach ($packagesList as $package) {
-<<<<<<< HEAD
             if ($package instanceof AliasPackage) {
                 $package = $package->getAliasOf();
             }
-=======
->>>>>>> always set path (+10 squashed commits)
+
             if ($package instanceof CompletePackage) {
                 $extra = $package->getExtra();
                 if (isset($extra['mouf']['nodejs']['version'])) {
