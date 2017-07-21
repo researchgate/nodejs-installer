@@ -441,13 +441,13 @@ class NodeJsInstaller
             $this->createBinScript($targetDir, 'node', 'node', $isLocal);
             $this->createBinScript($targetDir, 'npm', 'npm', $isLocal);
             if ($yarnInstalled) {
-                $this->createBinScript($targetDir.'/yarn', 'yarn', 'yarnpkg', $isLocal);
+                $this->createBinScript($targetDir.'/yarn', 'yarnpkg', 'yarnpkg', $isLocal);
             }
         } else {
             $this->createBinScript($targetDir, 'node.bat', 'node', $isLocal);
             $this->createBinScript($targetDir, 'npm.bat', 'npm', $isLocal);
             if ($yarnInstalled) {
-                $this->createBinScript($targetDir.'/yarn', 'yarn.bat', 'yarnpkg', $isLocal);
+                $this->createBinScript($targetDir.'/yarn', 'yarnpkg.bat', 'yarnpkg', $isLocal);
             }
         }
     }
