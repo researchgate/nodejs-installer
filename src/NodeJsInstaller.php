@@ -417,7 +417,7 @@ class NodeJsInstaller
         }
     }
 
-    public function createBinScripts($targetDir, $isLocal, $yarnInstalled)
+    public function createBinScripts($targetDir, $isLocal, $yarnInstalled = false)
     {
         if (!file_exists($this->binDir)) {
             $result = mkdir($this->binDir, 0775, true);
