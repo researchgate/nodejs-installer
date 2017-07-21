@@ -153,7 +153,7 @@ class NodeJsInstaller
     }
 
     /**
-     * Checks if NodeJS is installed locally.
+     * Checks if NPM is installed locally.
      * If yes, will return the version number.
      * If no, will return null.
      *
@@ -169,6 +169,33 @@ class NodeJsInstaller
         ob_start();
 
         $version = exec($this->binDir.DIRECTORY_SEPARATOR.'npm -v 2>&1', $output, $returnCode);
+
+        ob_end_clean();
+
+        if ($returnCode !== 0) {
+            return;
+        } else {
+            return $version;
+        }
+    }
+
+    /**
+     * Checks if Yarn is installed locally.
+     * If yes, will return the version number.
+     * If no, will return null.
+     *
+     * Note: trailing "v" will be removed from version string.
+     *
+     * @return null|string
+     */
+    public function getYarnLocalInstallVersion()
+    {
+        $returnCode = 0;
+        $output = "";
+
+        ob_start();
+
+        $version = exec($this->binDir.DIRECTORY_SEPARATOR.'yarn --version', $output, $returnCode);
 
         ob_end_clean();
 
@@ -317,6 +344,58 @@ class NodeJsInstaller
     }
 
     /**
+     * @param string $version
+     * @param string $targetDirectory
+     *
+     * @throws NodeJsInstallerException
+     */
+    public function installYarn($version, $targetDirectory)
+    {
+        if (!$version) {
+            return;
+        }
+
+        $localYarnVersion = $this->getYarnLocalInstallVersion();
+        if ($localYarnVersion === $version) {
+            // Nothing to do already up2date
+            return;
+        }
+
+        if (Environment::isWindows()) {
+            $this->io->write("Cannot install yarn on windows yet");
+            return;
+        }
+
+
+        $this->io->write("Installing <info>Yarn v".$version."</info>");
+
+        $url = 'https://github.com/yarnpkg/yarn/releases/download/v'.$version.'/yarn-v'.$version.'.tar.gz';
+        $yarnFileName = $this->vendorDir.'/yarn-v'.$version.'.tar.gz';
+        $this->rfs->copy(parse_url($url, PHP_URL_HOST), $url, $yarnFileName);
+
+        $output = $return_var = null;
+
+        $yarnDirectory = $targetDirectory.'/yarn';
+
+        exec("rm -rf ".escapeshellarg($yarnDirectory));
+
+        $result = mkdir($yarnDirectory, 0775, true);
+        if ($result === false) {
+            throw new NodeJsInstallerException("Unable to create directory ".$yarnDirectory);
+        }
+
+        exec("tar -xf ".$yarnFileName." -C ".escapeshellarg($yarnDirectory)." --strip 1", $output, $return_var);
+
+        if ($return_var !== 0) {
+            throw new NodeJsInstallerException("An error occurred while untaring Yarn ($yarnFileName) to $targetDirectory");
+        }
+
+        exec("tar -xf ".$yarnFileName." -C ".escapeshellarg($yarnDirectory)." --strip 1", $output, $return_var);
+
+        unlink($yarnFileName);
+    }
+
+    /**
      * Extract tar.gz file to target directory.
      *
      * @param string $tarGzFile
@@ -338,7 +417,7 @@ class NodeJsInstaller
         }
     }
 
-    public function createBinScripts($targetDir, $isLocal)
+    public function createBinScripts($targetDir, $isLocal, $yarnInstalled)
     {
         if (!file_exists($this->binDir)) {
             $result = mkdir($this->binDir, 0775, true);
@@ -350,9 +429,15 @@ class NodeJsInstaller
         if (!Environment::isWindows()) {
             $this->createBinScript($targetDir, 'node', 'node', $isLocal);
             $this->createBinScript($targetDir, 'npm', 'npm', $isLocal);
+            if ($yarnInstalled) {
+                $this->createBinScript($targetDir.'/yarn', 'yarn', 'yarn', $isLocal);
+            }
         } else {
             $this->createBinScript($targetDir, 'node.bat', 'node', $isLocal);
             $this->createBinScript($targetDir, 'npm.bat', 'npm', $isLocal);
+            if ($yarnInstalled) {
+                $this->createBinScript($targetDir.'/yarn', 'yarn.bat', 'yarn', $isLocal);
+            }
         }
     }
 

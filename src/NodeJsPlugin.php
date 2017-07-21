@@ -157,11 +157,12 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
         }
 
         // Now, let's create the bin scripts that start node and NPM
-        $nodeJsInstaller->createBinScripts($settings['targetDir'], $isLocal);
+        $nodeJsInstaller->createBinScripts($settings['targetDir'], $isLocal, $settings['yarnVersion']);
 
         putenv('PATH='.$binDir.PATH_SEPARATOR.getenv('PATH'));
 
         $nodeJsInstaller->installNpm($settings['npmVersion'], $settings['targetDir']);
+        $nodeJsInstaller->installYarn($settings['yarnVersion'], $settings['targetDir']);
     }
 
     /**
