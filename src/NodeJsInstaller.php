@@ -139,6 +139,10 @@ class NodeJsInstaller
         $returnCode = 0;
         $output = "";
 
+        if (!file_exists($this->binDir.DIRECTORY_SEPARATOR.'node')) {
+            return;
+        }
+
         ob_start();
 
         $version = exec($this->binDir.DIRECTORY_SEPARATOR.'node -v 2>&1', $output, $returnCode);
@@ -166,6 +170,10 @@ class NodeJsInstaller
         $returnCode = 0;
         $output = "";
 
+        if (!file_exists($this->binDir.DIRECTORY_SEPARATOR.'npm')) {
+            return;
+        }
+
         ob_start();
 
         $version = exec($this->binDir.DIRECTORY_SEPARATOR.'npm -v 2>&1', $output, $returnCode);
@@ -188,12 +196,15 @@ class NodeJsInstaller
      *
      * @return null|string
      */
-    public function getYarnLocalInstallVersion()
+    public function getYarnLocalInstallVersion($targetDirectory)
     {
         $returnCode = 0;
         $output = "";
 
-        if (!file_exists($this->binDir.DIRECTORY_SEPARATOR.'yarn')) {
+        if (
+            !file_exists($this->binDir.DIRECTORY_SEPARATOR.'yarn') ||
+            !file_exists($targetDirectory.DIRECTORY_SEPARATOR.'bin'.DIRECTORY_SEPARATOR.'yarn')
+        ) {
             return;
         }
 
@@ -359,7 +370,7 @@ class NodeJsInstaller
             return;
         }
 
-        $localYarnVersion = $this->getYarnLocalInstallVersion();
+        $localYarnVersion = $this->getYarnLocalInstallVersion($targetDirectory);
         if ($localYarnVersion === $version) {
             // Nothing to do already up2date
             return;
@@ -379,22 +390,20 @@ class NodeJsInstaller
 
         $output = $return_var = null;
 
-        $yarnDirectory = $targetDirectory.'/yarn';
+        exec("rm -rf ".escapeshellarg($targetDirectory));
 
-        exec("rm -rf ".escapeshellarg($yarnDirectory));
-
-        $result = mkdir($yarnDirectory, 0775, true);
+        $result = mkdir($targetDirectory, 0775, true);
         if ($result === false) {
-            throw new NodeJsInstallerException("Unable to create directory ".$yarnDirectory);
+            throw new NodeJsInstallerException("Unable to create directory ".$targetDirectory);
         }
 
-        exec("tar -xf ".$yarnFileName." -C ".escapeshellarg($yarnDirectory)." --strip 1", $output, $return_var);
+        exec("tar -xf ".$yarnFileName." -C ".escapeshellarg($targetDirectory)." --strip 1", $output, $return_var);
 
         if ($return_var !== 0) {
             throw new NodeJsInstallerException("An error occurred while untaring Yarn ($yarnFileName) to $targetDirectory");
         }
 
-        exec("tar -xf ".$yarnFileName." -C ".escapeshellarg($yarnDirectory)." --strip 1", $output, $return_var);
+        exec("tar -xf ".$yarnFileName." -C ".escapeshellarg($targetDirectory)." --strip 1", $output, $return_var);
 
         unlink($yarnFileName);
     }
