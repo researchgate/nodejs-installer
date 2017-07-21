@@ -403,8 +403,6 @@ class NodeJsInstaller
             throw new NodeJsInstallerException("An error occurred while untaring Yarn ($yarnFileName) to $targetDirectory");
         }
 
-        exec("tar -xf ".$yarnFileName." -C ".escapeshellarg($targetDirectory)." --strip 1", $output, $return_var);
-
         unlink($yarnFileName);
     }
 
