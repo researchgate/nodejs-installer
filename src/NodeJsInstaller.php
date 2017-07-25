@@ -290,6 +290,8 @@ class NodeJsInstaller
         $fileName = $this->vendorDir.DIRECTORY_SEPARATOR.pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_BASENAME);
 
         $this->rfs->copy(parse_url($url, PHP_URL_HOST), $url, $fileName);
+        // rfs is not adding a newline after finished
+        $this->io->writeError('');
 
         if (!file_exists($fileName)) {
             throw new \UnexpectedValueException($url.' could not be saved to '.$fileName.', make sure the'
@@ -332,6 +334,8 @@ class NodeJsInstaller
             $url = 'https://nodejs.org/dist/npm/npm-1.4.12.zip';
             $npmFileName = $this->vendorDir.'/npm-1.4.12.zip';
             $this->rfs->copy(parse_url($url, PHP_URL_HOST), $url, $npmFileName);
+            // rfs is not adding a newline after finished
+            $this->io->writeError('');
 
             $this->unzip($npmFileName, $targetDirectory);
 
@@ -387,6 +391,8 @@ class NodeJsInstaller
         $url = 'https://github.com/yarnpkg/yarn/releases/download/v'.$version.'/yarn-v'.$version.'.tar.gz';
         $yarnFileName = $this->vendorDir.'/yarn-v'.$version.'.tar.gz';
         $this->rfs->copy(parse_url($url, PHP_URL_HOST), $url, $yarnFileName);
+        // rfs is not adding a newline after finished
+        $this->io->writeError('');
 
         $output = $return_var = null;
 
