@@ -377,6 +377,7 @@ class NodeJsInstaller
         $localYarnVersion = $this->getYarnLocalInstallVersion($targetDirectory);
         if ($localYarnVersion === $version) {
             // Nothing to do already up2date
+            $this->io->write("<info>Yarn v".$version."</info> already installed");
             return;
         }
 
