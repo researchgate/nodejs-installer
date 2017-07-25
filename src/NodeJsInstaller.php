@@ -202,7 +202,7 @@ class NodeJsInstaller
         $output = "";
 
         if (
-            !file_exists($this->binDir.DIRECTORY_SEPARATOR.'yarn') ||
+            !file_exists($this->binDir.DIRECTORY_SEPARATOR.'yarnpkg') ||
             !file_exists($targetDirectory.DIRECTORY_SEPARATOR.'bin'.DIRECTORY_SEPARATOR.'yarn')
         ) {
             return;
