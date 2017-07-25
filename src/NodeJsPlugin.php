@@ -198,7 +198,7 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
                 $this->installBestPossibleLocalVersion($nodeJsInstaller, $versionConstraint, $targetDir);
             } else {
                 // Question: should we update to the latest version? Should we have a nodejs.lock file???
-                $this->io-write("<info>NodeJS v".$localVersion."</info> already installed");
+                $this->io->write("<info>NodeJS v".$localVersion."</info> already installed");
                 $this->verboseLog(" - Local NodeJS install matches constraint ".$versionConstraint);
             }
         } else {
