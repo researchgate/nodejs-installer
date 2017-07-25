@@ -210,7 +210,7 @@ class NodeJsInstaller
 
         ob_start();
 
-        $version = exec($this->binDir.DIRECTORY_SEPARATOR.'yarn --version', $output, $returnCode);
+        $version = exec($this->binDir.DIRECTORY_SEPARATOR.'yarnpkg --version', $output, $returnCode);
 
         ob_end_clean();
 
