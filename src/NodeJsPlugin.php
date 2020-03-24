@@ -92,7 +92,8 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
             'targetDir' => $vendorDir.'/nodejs/nodejs',
             'forceLocal' => false,
             'includeBinInPath' => false,
-            'npmVersion' => null
+            'npmVersion' => null,
+            'yarnVersion' => null,
         );
 
         $extra = $event->getComposer()->getPackage()->getExtra();
