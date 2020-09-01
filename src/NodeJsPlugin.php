@@ -120,7 +120,7 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
 
         $nodeJsVersionMatcher = new NodeJsVersionMatcher();
 
-        $versionConstraint = $this->getMergedVersionConstraint();
+        $versionConstraint = $this->getMergedVersionConstraint($config);
 
         $this->verboseLog("<info>NodeJS installer:</info>");
         $this->verboseLog(" - Requested version: ".$versionConstraint);
@@ -236,7 +236,7 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
     /**
      * Gets the version constraint from all included packages and merges it into one constraint.
      */
-    private function getMergedVersionConstraint()
+    private function getMergedVersionConstraint(Config $config)
     {
         $packagesList = $this->composer->getRepositoryManager()->getLocalRepository()
             ->getCanonicalPackages();
@@ -259,9 +259,14 @@ class NodeJsPlugin implements PluginInterface, EventSubscriberInterface
 
         if (!empty($versions)) {
             return implode(", ", $versions);
-        } else {
-            return "*";
         }
+
+        $nvmrcFile = $this->getBaseDirectory($config) . '/.nvmrc';
+        if (file_exists($nvmrcFile)) {
+            return file_get_contents($nvmrcFile);
+        }
+        
+        return "*";
     }
 
     /**
